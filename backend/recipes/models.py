@@ -45,7 +45,7 @@ class Tag(models.Model):
         default='#FFDB8B',
         validators=[
             validators.RegexValidator(
-                regex=r'#[a-f\d]{6}',
+                regex=r'#[0-9A-Fa-f]{6}',
                 message='Цвет не соответствует HEX кодировке.'
             )
         ]
@@ -153,8 +153,8 @@ class IngredientInRecipe(models.Model):
     class Meta:
         verbose_name = 'Ингридиент для рецепта'
         verbose_name_plural = 'Ингредиенты для рецепта'
-        ordering = ('recipe__tags',)
+        ordering = ('-recipe',)
 
     def __str__(self):
-        return (f'Для {self.recipe} понадобиться {self.quantity} '
+        return (f'Для {self.recipe} понадобится {self.quantity} '
                 f'{self.ingredient}')

@@ -3,9 +3,7 @@ from django.urls import path, include
 from rest_framework import routers
 
 from api.views import TagsViewsSet, IngredientsViewsSet
-
 from users.views import UserViewsSet, GetTokenView, DeleteTokenViews
-
 from recipes.views import RecipeViewset
 
 

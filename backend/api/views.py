@@ -1,8 +1,7 @@
-from .serializers import TagSerializer, IngredientsSerializer
-
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.permissions import AllowAny
 
+from .serializers import TagSerializer, IngredientsSerializer
 from recipes.models import Tag, Ingredient
 
 

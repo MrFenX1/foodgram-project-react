@@ -122,25 +122,21 @@ class GetTokenView(ObtainAuthToken):
     """
     permission_classes = (AllowAny,)
 
-    def post(self, request):
+    def post(self, request, **kwargs):
         """
         Метод создания токена.
         """
         serializer = GetTokenSerializer(data=request.data)
-        if serializer.is_valid():
-            user = get_object_or_404(
-                CustomUsers, email=serializer.validated_data['email']
-            )
-            token, created = Token.objects.get_or_create(user=user)
-            return Response(
-                {
-                    'auth_token': token.key
-                },
-                status=status.HTTP_201_CREATED
-            )
+        serializer.is_valid(raise_exception=True)
+        user = get_object_or_404(
+            CustomUsers, email=serializer.validated_data['email']
+        )
+        token, created = Token.objects.get_or_create(user=user)
         return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+            {
+                'auth_token': token.key
+            },
+            status=status.HTTP_201_CREATED
         )
 
 

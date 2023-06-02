@@ -2,12 +2,11 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from recipes.models import (IngredientInRecipe,
-                           Recipe, Ingredient)
+                           Recipe)
 from recipes.fields import Base64ImageField
+from api.serializers import TagSerializer
 
 from users.serializers import UserSerializer
-
-from api.serializers import TagSerializer
 
 
 class IngredientInRecipeSerializer(serializers.ModelSerializer):
@@ -76,12 +75,18 @@ class RecipeSerializer(serializers.ModelSerializer):
         return super().to_representation(instance)
 
     def validate(self, data):
-        ingredients = data['ingredients']
+        ingredients = data['ingredient_recipe']
+        existing_ingredient = {}
         for ingredient in ingredients:
-            if ingredient['amount'] <= 0:
+            if ingredient['quantity'] <= 0:
                 raise ValidationError(
                     'Количество ингридиента должно быть больше 0'
                 )
+            if ingredient['ingredient']['id'] in existing_ingredient:
+                raise ValidationError(
+                    'Повторяющие ингридиенты невозможны'
+                )
+            existing_ingredient['id'] = True
         if data['cooking_time'] <= 0:
             raise ValidationError(
                 'Время готовки должно быть больше нуля'
@@ -91,39 +96,42 @@ class RecipeSerializer(serializers.ModelSerializer):
         for tag in tags:
             if tag in existing_tags:
                 raise ValidationError(
-                    'Посторяющиеся теги недопустимы'
+                    'Повторяющиеся теги недопустимы'
                 )
             existing_tags['tag'] = True
         return data
 
     @staticmethod
-    def add_ingredients(instance, ingredients):
+    def add_tags(recipe, tags):
+        for tag in tags:
+            recipe.tags.add(tag)
+
+    @staticmethod
+    def add_ingredients(recipe, ingredients):
         for ingredient in ingredients:
-            Ingredient.objects.get_or_create(
-                name=ingredient['ingredient'],
-                measurement_unit=ingredient['amount'],
-                recipe=instance
-            )
+            IngredientInRecipe.objects.bulk_create([
+                IngredientInRecipe(
+                    ingredient_id=ingredient['ingredient']['id'],
+                    recipe=recipe,
+                    quantity=ingredient['quantity'])
+            ])
 
     def create(self, validated_data):
-        if 'tags' in validated_data:
-            tags = validated_data.pop('tags')
-        if 'ingredients' in validated_data:
-            ingredients = validated_data.pop('ingredients')
-        recipe = Recipe.objects.create(**validated_data)
-        recipe.tags.add(*tags)
+        author = self.context.get('request').user
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('ingredient_recipe')
+        recipe = Recipe.objects.create(author=author, **validated_data)
+        self.add_tags(recipe, tags)
         self.add_ingredients(recipe, ingredients)
         return recipe
 
     def update(self, instance, validated_data):
-        if 'tags' in validated_data:
-            tags = validated_data.pop('tags')
-            instance.tags.clear()
-            instance.tags.add(*tags)
-        if 'ingredients' in validated_data:
-            ingredients = validated_data.pop('ingredients')
-            Ingredient.objects.filter(recipe=instance).delete()
-            self.add_ingredients(instance, ingredients)
+        tags = validated_data.pop('tags')
+        instance.tags.clear()
+        instance.tags.add(*tags)
+        ingredients = validated_data.pop('ingredient_recipe')
+        IngredientInRecipe.objects.filter(recipe=instance).delete()
+        self.add_ingredients(instance, ingredients)
         super().update(instance, validated_data)
         return instance
 
