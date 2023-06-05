@@ -144,14 +144,14 @@ class IngredientInRecipe(models.Model):
         'Количество ингредиента',
         validators=[
             validators.MinValueValidator(
-                0,
+                1,
                 message='Ингредиента не может быть 0.'
             )
         ],
     )
 
     class Meta:
-        verbose_name = 'Ингридиент для рецепта'
+        verbose_name = 'Ингредиент для рецепта'
         verbose_name_plural = 'Ингредиенты для рецепта'
         ordering = ('-recipe',)
 

@@ -11,10 +11,7 @@ from users.serializers import (GetTokenSerializer,
                                UserSerializer,
                                ChangePasswordSerializer,
                                SubscriptionSerializer)
-from users.models import CustomUsers, Subscribe
-
-
-from api.pagination import UserPagination
+from users.models import CustomUser, Subscribe
 
 
 class UserViewsSet(mixins.CreateModelMixin,
@@ -23,9 +20,8 @@ class UserViewsSet(mixins.CreateModelMixin,
                    GenericViewSet):
     """Эндпоинт ./users/"""
 
-    queryset = CustomUsers.objects.all()
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    pagination_class = UserPagination
     permission_classes = [AllowAny]
 
 
@@ -37,8 +33,7 @@ class UserViewsSet(mixins.CreateModelMixin,
         Эндпоинт ./users/me/"""
 
         if request.user.is_authenticated:
-            user = request.user
-            serializer = self.get_serializer(user)
+            serializer = self.get_serializer(request.user)
 
             return Response(serializer.data)
 
@@ -53,62 +48,70 @@ class UserViewsSet(mixins.CreateModelMixin,
 
         serializer = ChangePasswordSerializer(request.user,
                                               data=request.data)
+        serializer.is_valid()
+        serializer.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        if serializer.is_valid():
-            serializer.save()
-
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        return Response(serializer.errors,
-                        status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['POST','DELETE'],
             permission_classes=[IsAuthenticated],
-            url_path=r'(?P<id>[\d]+)/favorite',
-            url_name='favorite',
+            url_path=r'(?P<id>[\d]+)/subscribe',
+            url_name='subscribe',
             detail=False)
-    def favorite(self, **kwargs):
+    def subscribe(self, request, **kwargs):
         """Метод подписки и отписки от пользователя
-        Эндпоинт ./users/<id>/favorite/"""
+        Эндпоинт ./users/<id>/subscribe/"""
         user = self.request.user
         author_id = kwargs['id']
-
-        author = get_object_or_404(CustomUsers, id=author_id)
+        author = get_object_or_404(CustomUser, id=author_id)
         subscription = Subscribe.objects.filter(
             user=user.id,
             user_author=author_id
         )
 
-        if user.id != author_id:
-            if self.request.method == 'POST' and not subscription.exists():
-                Subscribe.objects.create(user=user,
-                                         user_author=author)
-                serializer = SubscriptionSerializer(
-                    author,
-                    context={'request': self.request}
-                )
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            if self.request.method == 'DELETE' and subscription.exists():
-                subscription.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            return Response(
-                {'error': 'Ошибка'},
-                status=status.HTTP_400_BAD_REQUEST
+        if self.request.method == 'POST' and not subscription.exists():
+            serializer = SubscriptionSerializer(
+                author,
+                data=request.data,
+                context={'request': self.request}
             )
+            serializer.is_valid(raise_exception=True)
+            Subscribe.objects.create(user=user,
+                                     user_author=author)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if self.request.method == 'DELETE' and subscription.exists():
+            subscription.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
-            {'error': 'Подписка на себя запрещена'},
+            {'error': 'Ошибка'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
+
+    # def subscribe(self, request, **kwargs):
+    #     if request.method == 'POST':
+    #         author = get_object_or_404(CustomUser, id=id)
+    #         serializer = SubscriptionSerializer(author, data=request.data, context={'request': request})
+    #         if serializer.is_valid():
+    #             serializer.save(user=request.user)
+    #             return Response(serializer.data, status=status.HTTP_201_CREATED)
+    #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #     else:
+    #         author = get_object_or_404(CustomUser, id=id)
+    #         subscription = Subscribe.objects.filter(user=request.user.id, user_author=id)
+    #         if subscription.exists():
+    #             subscription.delete()
+    #             return Response(status=status.HTTP_204_NO_CONTENT)
+    #         return Response({'error': 'Ошибка'}, status=status.HTTP_400_BAD_REQUEST)
+
     @action(permission_classes=[IsAuthenticated],
             serializer_class=SubscriptionSerializer,
-            pagination_class=UserPagination,
             methods=['GET'],
             detail=False)
     def subscriptions(self, request):
         """Метод просмотра подписчиков
         Эндпоинт ./users/subscriptions/"""
-        queryset = CustomUsers.objects.filter(
+        queryset = CustomUser.objects.filter(
             author__user=request.user
         )
         serializer = self.get_serializer(queryset, many=True)
@@ -129,7 +132,7 @@ class GetTokenView(ObtainAuthToken):
         serializer = GetTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = get_object_or_404(
-            CustomUsers, email=serializer.validated_data['email']
+            CustomUser, email=serializer.validated_data['email']
         )
         token, created = Token.objects.get_or_create(user=user)
         return Response(

@@ -5,7 +5,6 @@ from recipes.models import (IngredientInRecipe,
                            Recipe)
 from recipes.fields import Base64ImageField
 from api.serializers import TagSerializer
-
 from users.serializers import UserSerializer
 
 
@@ -80,11 +79,11 @@ class RecipeSerializer(serializers.ModelSerializer):
         for ingredient in ingredients:
             if ingredient['quantity'] <= 0:
                 raise ValidationError(
-                    'Количество ингридиента должно быть больше 0'
+                    'Количество ингредиента должно быть больше 0'
                 )
             if ingredient['ingredient']['id'] in existing_ingredient:
                 raise ValidationError(
-                    'Повторяющие ингридиенты невозможны'
+                    'Повторяющие ингредиенты невозможны'
                 )
             existing_ingredient['id'] = True
         if data['cooking_time'] <= 0:
@@ -103,18 +102,19 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def add_tags(recipe, tags):
-        for tag in tags:
-            recipe.tags.add(tag)
+        recipe.tags.set(tags)
 
     @staticmethod
     def add_ingredients(recipe, ingredients):
+        IngrInRecipe = []
         for ingredient in ingredients:
-            IngredientInRecipe.objects.bulk_create([
+            IngrInRecipe.append(
                 IngredientInRecipe(
                     ingredient_id=ingredient['ingredient']['id'],
                     recipe=recipe,
                     quantity=ingredient['quantity'])
-            ])
+            )
+        IngredientInRecipe.objects.bulk_create(IngrInRecipe)
 
     def create(self, validated_data):
         author = self.context.get('request').user

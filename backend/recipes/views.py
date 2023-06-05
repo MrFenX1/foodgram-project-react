@@ -1,22 +1,17 @@
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
-
 from django_filters.rest_framework import DjangoFilterBackend
-
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 
-from users.models import CustomUsers
-
+from users.models import CustomUser
 from recipes.models import Recipe, IngredientInRecipe
 from recipes.serializers import RecipeSerializer, UserLikeRecipeSerializer
 from recipes.permissions import IsAuthorOrAdmin
 from recipes.generate_pdf import generate_pdf
-
-from api.pagination import UserPagination
 
 
 class RecipeViewset(ModelViewSet):
@@ -24,7 +19,6 @@ class RecipeViewset(ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     filter_backends = (DjangoFilterBackend,)
-    pagination_class = UserPagination
     permission_classes = [IsAuthorOrAdmin,
                           IsAuthenticatedOrReadOnly]
 
@@ -38,8 +32,8 @@ class RecipeViewset(ModelViewSet):
     def favorites(self, request, **kwargs):
         """Добавление и удаление рецепта в избранное"""
         recipe = get_object_or_404(Recipe, id=kwargs['id'])
-        user = get_object_or_404(CustomUsers, id=request.user.id)
-        recipe_like = CustomUsers.objects.filter(
+        user = get_object_or_404(CustomUser, id=request.user.id)
+        recipe_like = CustomUser.objects.filter(
             username=request.user.id,
             favorite_recipes=recipe,
         ).exists()
@@ -66,8 +60,8 @@ class RecipeViewset(ModelViewSet):
     def shopping_cart(self, request, **kwargs):
         """Добавление и удаления рецепта из списка покупок"""
         recipe = get_object_or_404(Recipe, id=kwargs['id'])
-        user = get_object_or_404(CustomUsers, id=request.user.id)
-        queryset = CustomUsers.objects.filter(
+        user = get_object_or_404(CustomUser, id=request.user.id)
+        queryset = CustomUser.objects.filter(
             id=request.user.id,
             shopping_recipes=recipe
         ).exists()

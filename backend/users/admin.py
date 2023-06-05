@@ -1,9 +1,9 @@
 from django.contrib import admin
 
-from .models import Subscribe, CustomUsers
+from .models import Subscribe, CustomUser
 
 
-@admin.register(CustomUsers)
+@admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = ('id', 'username', 'first_name', 'last_name')
     list_filter = ('email', 'username')

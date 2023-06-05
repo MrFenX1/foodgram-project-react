@@ -1,17 +1,15 @@
 from rest_framework.validators import UniqueValidator, ValidationError
 from rest_framework import serializers
-
 from django.contrib.auth import password_validation as pw
 
-from users.models import CustomUsers
-
+from users.models import CustomUser, Subscribe
 from recipes.models import Recipe
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор списка пользователей.
     Регистрации пользователя.
-    Профиля пользователя.
+    Профиль пользователя.
     Информации о текущем пользователе.
     """
 
@@ -20,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=150,
         validators=[
             UniqueValidator(
-                queryset=CustomUsers.objects.all(),
+                queryset=CustomUser.objects.all(),
                 message='Пользователь с таким Логином уже существует.'
             ),
         ]
@@ -29,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=254,
         validators=[
             UniqueValidator(
-                queryset=CustomUsers.objects.all(),
+                queryset=CustomUser.objects.all(),
                 message=f'Пользователь c таким email уже существует'
             ),
         ]
@@ -37,7 +35,7 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = CustomUsers
+        model = CustomUser
         fields = (
             'email',
             'id',
@@ -48,23 +46,11 @@ class UserSerializer(serializers.ModelSerializer):
             'is_subscribed',
         )
 
-
     def get_is_subscribed(self, obj):
-        """
-        Информации о подписке на пользователя
-        """
-
-        if self.context.get('request').path_info == '/api/users/me/':
-            return False
-
         user = self.context.get('request').user
-        if user.is_authenticated:
-            try:
-                return obj.is_subscribed
-            except AttributeError:
-                return user.subscriber.filter(user_author=obj).exists()
-
-        return False
+        if user.is_anonymous:
+            return False
+        return Subscribe.objects.filter(user=user, user_author=obj).exists()
 
     def create(self, validated_data):
         """Функция регистрации пользователя"""
@@ -117,7 +103,7 @@ class SubscriptionSerializer(UserSerializer):
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUsers
+        model = CustomUser
         fields = (
             'email',
             'id',
@@ -128,6 +114,13 @@ class SubscriptionSerializer(UserSerializer):
             'recipes',
             'recipes_count',
         )
+
+    def validate(self, data):
+        user = self.context['request'].user
+        author = self.instance
+        if user.id == author.id:
+            raise serializers.ValidationError('Подписка на себя запрещена')
+        return data
 
     def get_recipes(self, obj):
         """Получение списка рецептов"""
@@ -142,12 +135,8 @@ class SubscriptionSerializer(UserSerializer):
         return serializer.data
 
     def get_recipes_count(self, obj):
-        """Колличество рецептов"""
-        rec_count = obj.recipes.all().count()
-        return rec_count
-
-    def get_validators(self):
-        pass
+        """Количество рецептов"""
+        return obj.recipes.all().count()
 
 
 class RecipeUserSerializer(serializers.ModelSerializer):
@@ -172,7 +161,7 @@ class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(max_length=150)
 
     class Meta:
-        model = CustomUsers
+        model = CustomUser
 
     def validate_password(self, value):
         """Проверка старого пароля"""
@@ -183,7 +172,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
     def update(self, instance, validated_data):
-        """J,yjdktybt cnfhjuj gfhjkz"""
+        """Обновление старого пароля"""
         instance.set_password(validated_data['new_password'])
         instance.save()
 

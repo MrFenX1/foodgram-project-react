@@ -4,7 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from recipes.models import Recipe
 
 
-class CustomUsers(AbstractUser):
+class CustomUser(AbstractUser):
 
     username = models.CharField(
         'Логин',
@@ -63,13 +63,13 @@ class Subscribe(models.Model):
     """
 
     user = models.ForeignKey(
-        CustomUsers,
+        CustomUser,
         verbose_name='Подписчик',
         on_delete=models.CASCADE,
         related_name='subscriber',
     )
     user_author = models.ForeignKey(
-        CustomUsers,
+        CustomUser,
         verbose_name='Автор',
         on_delete=models.CASCADE,
         related_name='author',
