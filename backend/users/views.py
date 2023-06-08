@@ -52,7 +52,6 @@ class UserViewsSet(mixins.CreateModelMixin,
         serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
     @action(methods=['POST','DELETE'],
             permission_classes=[IsAuthenticated],
             url_path=r'(?P<id>[\d]+)/subscribe',
@@ -61,8 +60,8 @@ class UserViewsSet(mixins.CreateModelMixin,
     def subscribe(self, request, **kwargs):
         """Метод подписки и отписки от пользователя
         Эндпоинт ./users/<id>/subscribe/"""
-        user = self.request.user
-        author_id = kwargs['id']
+        user = request.user
+        author_id = kwargs.get('id')
         author = get_object_or_404(CustomUser, id=author_id)
         subscription = Subscribe.objects.filter(
             user=user.id,

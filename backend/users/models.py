@@ -40,11 +40,13 @@ class CustomUser(AbstractUser):
         Recipe,
         verbose_name='Избранные рецепты',
         related_name='favorites',
+        blank=True
     )
     shopping_recipes = models.ManyToManyField(
         Recipe,
         verbose_name='Список покупок',
         related_name='shoppings',
+        blank=True
     )
 
     class Meta:

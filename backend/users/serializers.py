@@ -101,6 +101,10 @@ class SubscriptionSerializer(UserSerializer):
     """Обработка запроса на подписку"""
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
+    email = serializers.EmailField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    first_name = serializers.CharField(read_only=True)
+    last_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = CustomUser
